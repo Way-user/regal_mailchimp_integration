@@ -36,7 +36,7 @@ def home():
 
 
 # --- Mailchimp to Regal.io Sync ---
-@app.route("/mailchimp-webhook", methods=["POST"])
+@app.route("/mailchimp-webhook", methods=["GET","POST"])
 def mailchimp_webhook():
     data = request.get_json()
 
