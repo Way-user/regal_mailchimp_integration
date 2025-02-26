@@ -5,18 +5,15 @@ import logging
 
 app = Flask(__name__)
 
-# Regal.io API Details
-REGAL_IO_ENDPOINT = "https://events.regalvoice.com/events"
-REGAL_IO_API_KEY = "mg0Fk9ZtRI_tu6Vvntg1Ekrt3HU9dI-_GTNmzyaOYcNjgcAtJxeCGQ"
+# Load API keys securely from environment variables
+REGAL_IO_API_KEY = os.getenv("REGAL_IO_API_KEY")
+MAILCHIMP_API_KEY = os.getenv("MAILCHIMP_API_KEY")
+MAILCHIMP_LIST_ID = os.getenv("MAILCHIMP_LIST_ID")
+MAILCHIMP_DC = os.getenv("MAILCHIMP_DC", "us1")
 
-# Configure logging for debugging
+# Configure logging
 logging.basicConfig(level=logging.INFO)
 
-
-# Mailchimp API Details
-MAILCHIMP_API_KEY = "c2560ec52e254104f08b39a4515a12cf-us1"
-MAILCHIMP_LIST_ID = "2960f1c6f4"
-MAILCHIMP_DC = "us1"  # Example: 'us19' (found in your API key)
 
 EVENT_MAPPING = {
     "subscribe": "User Subscribed",
@@ -27,11 +24,11 @@ EVENT_MAPPING = {
     "campaign": "Campaign Sent"
 }
 
-# Home route to check if API is running
-#@app.route("/", methods=["GET"])
-#def home():
-#    return "Flask API is running!", 200
-
+@app.route("/", methods=["GET", "POST"])
+def home():
+    if request.method == "POST":
+        return jsonify({"message": "POST request received, no action taken."}), 200
+    return jsonify({"message": "Flask API is running!"}), 200
 
 # --- Mailchimp to Regal.io Sync ---
 @app.route("/mailchimp-webhook", methods=["POST"])
@@ -107,12 +104,15 @@ def mailchimp_webhook():
         "eventSource": "MailChimp"
     }
 
-    # Send formatted data to Regal.io
     headers = {"Authorization": REGAL_IO_API_KEY, "Content-Type": "application/json"}
-    print("Sending Request to Regal.io with Headers:", headers)
-
-    response = requests.post(REGAL_IO_ENDPOINT, json=regal_payload, headers=headers)
-    #print("Payload sent to Regal.io:", json.dumps(regal_payload, indent=4))
+    
+    try:
+        response = requests.post("https://events.regalvoice.com/events", json=regal_payload, headers=headers)
+        response.raise_for_status()
+        return jsonify({"status": "success", "regal_response": response.json()}), response.status_code
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error sending to Regal.io: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
     return jsonify({"status": "success", "regal_response": response.json()}), response.status_code
 
