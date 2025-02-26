@@ -1,14 +1,17 @@
 from flask import Flask, request, jsonify
 import requests
-import hashlib
-import base64
-import json
+import datetime
+import logging
 
 app = Flask(__name__)
 
 # Regal.io API Details
 REGAL_IO_ENDPOINT = "https://events.regalvoice.com/events"
 REGAL_IO_API_KEY = "mg0Fk9ZtRI_tu6Vvntg1Ekrt3HU9dI-_GTNmzyaOYcNjgcAtJxeCGQ"
+
+# Configure logging for debugging
+logging.basicConfig(level=logging.INFO)
+
 
 # Mailchimp API Details
 MAILCHIMP_API_KEY = "c2560ec52e254104f08b39a4515a12cf-us1"
@@ -24,10 +27,19 @@ EVENT_MAPPING = {
     "campaign": "Campaign Sent"
 }
 
+# Home route to check if API is running
+@app.route("/", methods=["GET"])
+def home():
+    return "Flask API is running!", 200
+
+
 # --- Mailchimp to Regal.io Sync ---
 @app.route("/mailchimp-webhook", methods=["POST"])
 def mailchimp_webhook():
     data = request.json
+
+    # Logging request for debugging
+    logging.info(f"Received Mailchimp webhook: {data}")
 
     # Extract event type from Mailchimp data
     event_type = data.get("type", "unknown")
@@ -146,5 +158,6 @@ def regal_webhook():
 
     return jsonify({"status": "success", "mailchimp_response": response.json()}), response.status_code
 '''
+# Run the Flask app on all addresses (for Render)
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=10000, debug=True)
