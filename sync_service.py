@@ -2,14 +2,15 @@ from flask import Flask, request, jsonify
 import requests
 import datetime
 import logging
+import os
 
 app = Flask(__name__)
 
 # Load API keys securely from environment variables
-REGAL_IO_API_KEY = os.getenv("REGAL_IO_API_KEY")
-MAILCHIMP_API_KEY = os.getenv("MAILCHIMP_API_KEY")
-MAILCHIMP_LIST_ID = os.getenv("MAILCHIMP_LIST_ID")
-MAILCHIMP_DC = os.getenv("MAILCHIMP_DC", "us1")
+REGAL_IO_API_KEY = os.environ["REGAL_IO_API_KEY"]
+MAILCHIMP_API_KEY = os.environ["MAILCHIMP_API_KEY"]
+MAILCHIMP_LIST_ID = os.environ["MAILCHIMP_LIST_ID"]
+MAILCHIMP_DC = os.environ["MAILCHIMP_DC"]
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
