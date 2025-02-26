@@ -108,9 +108,17 @@ def mailchimp_webhook():
     headers = {"Authorization": REGAL_IO_API_KEY, "Content-Type": "application/json"}
     
     try:
-        response = requests.post("https://events.regalvoice.com/events", json=regal_payload, headers=headers)
-        response.raise_for_status()
+        response = requests.post(
+        "https://events.regalvoice.com/events",
+        data=json.dumps(regal_payload),  # Convert dictionary to JSON
+        headers=headers
+    )
+    
+        logging.info(f"Response from Regal.io: {response.status_code} - {response.text}")
+    
+        response.raise_for_status()  # Raise an error for bad responses
         return jsonify({"status": "success", "regal_response": response.json()}), response.status_code
+
     except requests.exceptions.RequestException as e:
         logging.error(f"Error sending to Regal.io: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
