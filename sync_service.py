@@ -25,7 +25,7 @@ EVENT_MAPPING = {
     "campaign": "Campaign Sent"
 }
 
-@app.route("/", methods=["GET", "POST"])
+@app.route("/", methods=["GET"])
 def home():
     if request.method == "POST":
         return jsonify({"message": "POST request received, no action taken."}), 200
