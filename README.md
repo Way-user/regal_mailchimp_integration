@@ -1,0 +1,1 @@
+# regal_mailchimp_integration
