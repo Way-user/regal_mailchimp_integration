@@ -28,9 +28,9 @@ EVENT_MAPPING = {
 }
 
 # Home route to check if API is running
-@app.route("/", methods=["GET"])
-def home():
-    return "Flask API is running!", 200
+#@app.route("/", methods=["GET"])
+#def home():
+#    return "Flask API is running!", 200
 
 
 # --- Mailchimp to Regal.io Sync ---
