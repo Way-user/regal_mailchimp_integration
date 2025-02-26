@@ -25,11 +25,12 @@ EVENT_MAPPING = {
     "campaign": "Campaign Sent"
 }
 
-@app.route("/", methods=["GET"])
+@app.route("/", methods=["GET", "POST"])
 def home():
     if request.method == "POST":
-        return jsonify({"message": "POST request received, no action taken."}), 200
+        return jsonify({"message": "POST request received, but no action taken."}), 200
     return jsonify({"message": "Flask API is running!"}), 200
+
 
 # --- Mailchimp to Regal.io Sync ---
 @app.route("/mailchimp-webhook", methods=["POST"])
