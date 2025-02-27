@@ -167,9 +167,13 @@ def home():
     }
     # Log payload before sending to Regal.io
     logging.info(f"Payload Sent to Regal.io: {json.dumps(regal_payload, indent=4)}")
-     # ✅ Send Non-Campaign Events to Regal.io
-    send_to_regal(regal_payload)
-    return jsonify({"status": "success", "regal_response": response.json()}), response.status_code
+     #  Send Non-Campaign Events to Regal.io
+    regal_response = send_to_regal(regal_payload)
+
+    if regal_response:
+        return jsonify({"status": "success", "regal_response": regal_response.json()}), regal_response.status_code
+    else:
+        return jsonify({"status": "error", "message": "Failed to send data to Regal.io"}), 500
     
     
 def get_mailchimp_list_info():
@@ -216,9 +220,10 @@ def send_to_regal(payload):
         )
         response.raise_for_status()
         logging.info(f"Successfully sent data to Regal.io: {response.text}")
+        return response  #  Return response here
     except requests.exceptions.RequestException as e:
         logging.error(f"Error sending data to Regal.io: {e}")
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return None  # Return None if request fails
 
 '''
 # --- Regal.io to Mailchimp Sync (Only if `source` is "INSURANCE") ---
