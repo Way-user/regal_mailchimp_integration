@@ -86,7 +86,7 @@ def home():
         except (ValueError, TypeError):
             return value
 
-    clicked_link = convert_to_numbe(data.get("data[merges][MMERGE9]", "0"))
+    clicked_link = convert_to_number(data.get("data[merges][MMERGE9]", "0"))
     opened_email = (data.get("data[merges][MMERGE8]", "0"))
     bounced_email = (data.get("data[merges][MMERGE10]", "0"))
     marked_as_spam = (data.get("data[merges][MMERGE11]", "0"))
