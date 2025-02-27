@@ -74,7 +74,7 @@ def home():
     first_name = data.get("data[merges][FNAME]", "")
     last_name = data.get("data[merges][LNAME]", "")
     phone = data.get("data[merges][PHONE]", "")
-    zip_code = data.get("data[merges][MMERGE12]", "")
+    zip_code = data.get("data[merges][MMERGE13]", "")
     state = data.get("data[merges][MMERGE21]", "")
 
     # Engagement metrics
@@ -86,10 +86,10 @@ def home():
         except (ValueError, TypeError):
             return value
 
-    clicked_link = convert_to_number(data.get("data[merges][MMERGE8]", "0"))
-    opened_email = convert_to_number(data.get("data[merges][MMERGE13]", "0"))
-    bounced_email = convert_to_number(data.get("data[merges][MMERGE19]", "0"))
-    marked_as_spam = convert_to_number(data.get("data[merges][MMERGE17]", "0"))
+    clicked_link = convert_to_numbe(data.get("data[merges][MMERGE9]", "0"))
+    opened_email = (data.get("data[merges][MMERGE8]", "0"))
+    bounced_email = (data.get("data[merges][MMERGE10]", "0"))
+    marked_as_spam = (data.get("data[merges][MMERGE11]", "0"))
 
     user_id = data.get("data[id]", "")
 
