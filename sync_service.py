@@ -25,15 +25,27 @@ EVENT_MAPPING = {
     "upemail": "Email Address Updated",
     "campaign": "Campaign Sent"
 }
-'''
-@app.route("/", methods=["GET", "POST"])
-def home():
-    """Health check endpoint."""
-    if request.method == "POST":
-        logging.info("Received POST request at /")
-        return jsonify({"message": "POST request received, but no action taken."}), 200
-    return jsonify({"message": "Flask API is running!"}), 200
-'''
+MAILCHIMP_API_BASE = f"https://{MAILCHIMP_DC}.api.mailchimp.com/3.0"
+MAILCHIMP_AUTH_HEADER = {"Authorization": f"Bearer {MAILCHIMP_API_KEY}"}
+
+def get_mailchimp_list_info():
+    """Fetch list info (campaign defaults & stats) from Mailchimp."""
+    url = f"{MAILCHIMP_API_BASE}/lists/{MAILCHIMP_LIST_ID}"
+    try:
+        response = requests.get(url, headers=MAILCHIMP_AUTH_HEADER)
+        response.raise_for_status()
+        data = response.json()
+        return {
+            "from_name": data.get("campaign_defaults", {}).get("from_name", ""),
+            "from_email": data.get("campaign_defaults", {}).get("from_email", ""),
+            "subject": data.get("campaign_defaults", {}).get("subject", ""),
+            "language": data.get("campaign_defaults", {}).get("language", ""),
+            "open_rate": data.get("stats", {}).get("open_rate", 0),
+            "click_rate": data.get("stats", {}).get("click_rate", 0)
+        }
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error fetching Mailchimp list info: {e}")
+        return {}
 
 # --- Mailchimp to Regal.io Sync ---
 @app.route("/", methods=["GET","POST"])
@@ -77,7 +89,6 @@ def home():
     zip_code = data.get("data[merges][MMERGE12]", "")
     state = data.get("data[merges][MMERGE21]", "")
 
-    email_subject = data.get("data[subject]", "No Subject Provided")
 
     # Engagement metrics
     def convert_to_number(value):
@@ -114,15 +125,23 @@ def home():
             "clicked_link": clicked_link,
             "opened_email": opened_email,
             "bounced_email": bounced_email,
-            "marked_as_spam": marked_as_spam
+            "marked_as_spam": marked_as_spam,
+            "from_name": mailchimp_list_info.get("from_name", ""),
+            "from_email": mailchimp_list_info.get("from_email", ""),
+            "campaign_subject": mailchimp_list_info.get("subject", ""),
+            "language": mailchimp_list_info.get("language", ""),
+            "open_rate": mailchimp_list_info.get("open_rate", 0),
+            "click_rate": mailchimp_list_info.get("click_rate", 0)
         },
         "name": event_name,
         "properties": {
-            "email_subject": email_subject,
+            "email_subject": mailchimp_list_info.get("subject", ""),
             "clicked_link": clicked_link,
             "opened_email": opened_email,
             "bounced_email": bounced_email,
-            "marked_as_spam": marked_as_spam
+            "marked_as_spam": marked_as_spam,
+            "open_rate": mailchimp_list_info.get("open_rate", 0),
+            "click_rate": mailchimp_list_info.get("click_rate", 0)
         },
         "eventSource": "MailChimp"
     }
