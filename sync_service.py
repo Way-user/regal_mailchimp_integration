@@ -56,7 +56,7 @@ def mailchimp_webhook():
     # Log request data for debugging
     logging.info(f"Received Mailchimp webhook: {json.dumps(data, indent=4)}")
     
-'''    data = request.get_json()
+''' data = request.get_json()
 
     # Logging request for debugging
     logging.info(f"Received Mailchimp webhook: {data}")
