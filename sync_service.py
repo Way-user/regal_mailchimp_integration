@@ -65,6 +65,8 @@ def home():
 
       # Extract data inside "data[]" fields from Mailchimp
     email = data.get("data[email]", "")
+    mailchimp_campaign_id = data.get("data[merges][MMERGE5]", "")
+    mailchimp_contact_subject = data.get("data[merges][MMERGE6]", "")
     first_name = data.get("data[merges][FNAME]", "")
     last_name = data.get("data[merges][LNAME]", "")
     phone = data.get("data[merges][PHONE]", "")
@@ -121,6 +123,8 @@ def home():
             "clicked_link": clicked_link,
             "opened_email": opened_email,
             "bounced_email": bounced_email,
+            "mailchimp_campaign_id" : mailchimp_campaign_id,
+            "mailchimp_contact_subject" : mailchimp_contact_subject,
             "marked_as_spam": marked_as_spam,
             "open_rate": mailchimp_list_info.get("open_rate", 0),
             "click_rate": mailchimp_list_info.get("click_rate", 0)
