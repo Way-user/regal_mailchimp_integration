@@ -77,6 +77,8 @@ def home():
     zip_code = data.get("data[merges][MMERGE12]", "")
     state = data.get("data[merges][MMERGE21]", "")
 
+    email_subject = data.get("data[subject]", "No Subject Provided")
+
     # Engagement metrics
     def convert_to_number(value):
         try:
@@ -116,6 +118,7 @@ def home():
         },
         "name": event_name,
         "properties": {
+            "email_subject": email_subject,
             "clicked_link": clicked_link,
             "opened_email": opened_email,
             "bounced_email": bounced_email,
