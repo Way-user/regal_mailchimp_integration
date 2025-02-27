@@ -94,7 +94,8 @@ def home():
         campaign_subject = data.get("data[subject]", "")
         # Fetch Campaign Recipients (since Mailchimp does NOT send recipients in the webhook)
         recipients = get_campaign_recipients(campaign_id)
-         #  Send each recipient event to Regal.io
+        campaign_performance = get_campaign_performance(campaign_id)
+        #  Send each recipient event to Regal.io
         for recipient in recipients:
             recipient_email = recipient.get("email_address", "")
             activity = recipient.get("activity", [])
@@ -111,11 +112,13 @@ def home():
                     "from_name": mailchimp_list_info.get("from_name", ""),
                     "from_email": mailchimp_list_info.get("from_email", ""),
                     "language": mailchimp_list_info.get("language", ""),
-                    "open_rate": mailchimp_list_info.get("open_rate", 0),
-                    "click_rate": mailchimp_list_info.get("click_rate", 0),
-                    "clicked_link": clicks,
-                    "opened_email": opens,
-                    "bounced_email": bounces,
+                    "open_rate": campaign_performance.get("open_rate", 0),
+                    "click_rate": campaign_performance.get("click_rate", 0),
+                    "bounce_rate": campaign_performance.get("bounce_rate", 0),
+                    "unsubscribe_rate": campaign_performance.get("unsubscribe_rate", 0),
+                    "total_opens": campaign_performance.get("total_opens", 0),
+                    "total_clicks": campaign_performance.get("total_clicks", 0)
+            
                 },
                 "name": event_name,
                 "properties": {
@@ -124,8 +127,18 @@ def home():
                     "opened_email": opens,
                     "bounced_email": bounces,
                     "campaign_id": campaign_id,
-                    "open_rate": mailchimp_list_info.get("open_rate", 0),
-                    "click_rate": mailchimp_list_info.get("click_rate", 0),
+                    "open_rate": campaign_performance.get("open_rate", 0),
+                    "click_rate": campaign_performance.get("click_rate", 0),
+                    "bounce_rate": campaign_performance.get("bounce_rate", 0),
+                    "unsubscribe_rate": campaign_performance.get("unsubscribe_rate", 0),
+                    "successful_deliveries": campaign_performance.get("successful_deliveries", 0),
+                    "total_opens": campaign_performance.get("total_opens", 0),
+                    "last_opened": campaign_performance.get("last_opened", ""),
+                    "clicks_per_unique_opens": campaign_performance.get("clicks_per_unique_opens", 0),
+                    "total_clicks": campaign_performance.get("total_clicks", 0),
+                    "last_clicked": campaign_performance.get("last_clicked", ""),
+                    "abuse_reports": campaign_performance.get("abuse_reports", 0),
+                    "forwarded_count": campaign_performance.get("forwarded_count", 0)
                 },
                 "eventSource": "MailChimp"
             }
@@ -208,6 +221,33 @@ def get_campaign_recipients(campaign_id):
     except requests.exceptions.RequestException as e:
         logging.error(f"Error fetching campaign recipients: {e}")
         return []
+
+def get_campaign_performance(campaign_id):
+    """Fetch campaign performance metrics (open rate, click rate, bounce rate, unsubscribe rate) from Mailchimp."""
+    
+    url = f"{MAILCHIMP_API_BASE}/reports/{campaign_id}"
+    
+    try:
+        response = requests.get(url, headers=MAILCHIMP_AUTH_HEADER)
+        response.raise_for_status()
+        data = response.json()
+        
+        return {
+            "open_rate": data.get("opens", {}).get("open_rate", 0),
+            "click_rate": data.get("clicks", {}).get("click_rate", 0),
+            "bounce_rate": data.get("bounces", {}).get("hard_bounces", 0),  # Hard bounces count
+            "unsubscribe_rate": data.get("unsubscribed", 0),
+            "total_opens": data.get("opens", {}).get("opens_total", 0),
+            "last_opened": data.get("opens", {}).get("last_open", ""),
+            "clicks_per_unique_opens": data.get("clicks", {}).get("unique_clicks", 0),
+            "total_clicks": data.get("clicks", {}).get("clicks_total", 0),
+            "last_clicked": data.get("clicks", {}).get("last_click", ""),
+            "abuse_reports": data.get("abuse_reports", 0),
+            "forwarded_count": data.get("forwards", {}).get("forwards_total", 0),
+        }
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error fetching campaign performance: {e}")
+        return {}
 
 def send_to_regal(payload):
     """Send formatted data to Regal.io (one contact at a time)."""
