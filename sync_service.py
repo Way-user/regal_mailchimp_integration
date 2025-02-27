@@ -28,24 +28,6 @@ EVENT_MAPPING = {
 MAILCHIMP_API_BASE = f"https://{MAILCHIMP_DC}.api.mailchimp.com/3.0"
 MAILCHIMP_AUTH_HEADER = {"Authorization": f"Bearer {MAILCHIMP_API_KEY}"}
 
-def get_mailchimp_list_info():
-    """Fetch list info (campaign defaults & stats) from Mailchimp."""
-    url = f"{MAILCHIMP_API_BASE}/lists/{MAILCHIMP_LIST_ID}"
-    try:
-        response = requests.get(url, headers=MAILCHIMP_AUTH_HEADER)
-        response.raise_for_status()
-        data = response.json()
-        return {
-            "from_name": data.get("campaign_defaults", {}).get("from_name", ""),
-            "from_email": data.get("campaign_defaults", {}).get("from_email", ""),
-            "subject": data.get("campaign_defaults", {}).get("subject", ""),
-            "language": data.get("campaign_defaults", {}).get("language", ""),
-            "open_rate": data.get("stats", {}).get("open_rate", 0),
-            "click_rate": data.get("stats", {}).get("click_rate", 0)
-        }
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Error fetching Mailchimp list info: {e}")
-        return {}
 
 # --- Mailchimp to Regal.io Sync ---
 @app.route("/", methods=["GET","POST"])
@@ -55,7 +37,7 @@ def home():
 
     if request.method == "GET":
         return jsonify({"message": "GET request received, Mailchimp verification success."}), 200
-
+    mailchimp_list_info = get_mailchimp_list_info()
     # Handle different content types (JSON & Form)
     if request.content_type == "application/json":
         data = request.get_json()
@@ -167,6 +149,24 @@ def home():
         return jsonify({"status": "error", "message": str(e)}), 500
 
     return jsonify({"status": "success", "regal_response": response.json()}), response.status_code
+def get_mailchimp_list_info():
+    """Fetch list info (campaign defaults & stats) from Mailchimp."""
+    url = f"{MAILCHIMP_API_BASE}/lists/{MAILCHIMP_LIST_ID}"
+    try:
+        response = requests.get(url, headers=MAILCHIMP_AUTH_HEADER)
+        response.raise_for_status()
+        data = response.json()
+        return {
+            "from_name": data.get("campaign_defaults", {}).get("from_name", ""),
+            "from_email": data.get("campaign_defaults", {}).get("from_email", ""),
+            "subject": data.get("campaign_defaults", {}).get("subject", ""),
+            "language": data.get("campaign_defaults", {}).get("language", ""),
+            "open_rate": data.get("stats", {}).get("open_rate", 0),
+            "click_rate": data.get("stats", {}).get("click_rate", 0)
+        }
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error fetching Mailchimp list info: {e}")
+        return {}
 
 '''
 # --- Regal.io to Mailchimp Sync (Only if `source` is "INSURANCE") ---
