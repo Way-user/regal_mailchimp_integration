@@ -59,7 +59,7 @@ def home():
     phone = data.get("data[merges][PHONE]", "")
     zip_code = data.get("data[merges][MMERGE12]", "")
     state = data.get("data[merges][MMERGE21]", "")
-    clicked_link = int(data.get("data[merges][MMERGE9]", "0"))
+    clicked_link = (data.get("data[merges][MMERGE9]", "0"))
     opened_email = (data.get("data[merges][MMERGE8]", "0"))
     bounced_email = (data.get("data[merges][MMERGE10]", "0"))
     marked_as_spam = (data.get("data[merges][MMERGE11]", "0"))
