@@ -56,11 +56,12 @@ def mailchimp_webhook():
     # Log request data for debugging
     logging.info(f"Received Mailchimp webhook: {json.dumps(data, indent=4)}")
     
-''' data = request.get_json()
+    ''' 
+    data = request.get_json()
 
     # Logging request for debugging
     logging.info(f"Received Mailchimp webhook: {data}")
-'''
+    '''
     # Extract event type from Mailchimp data
     event_type = data.get("type", "unknown")
     event_name = EVENT_MAPPING.get(event_type, "Unknown Event")
