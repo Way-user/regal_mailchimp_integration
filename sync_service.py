@@ -69,17 +69,16 @@ def home():
     # Extract event source
     event_source = data.get("source", "Unknown Source")
 
-   # Extract relevant fields from Mailchimp event
-    email = data.get("email", "")
-    first_name = data.get("merges", {}).get("FNAME", "")
-    last_name = data.get("merges", {}).get("LNAME", "")
-    phone = data.get("merges", {}).get("PHONE", "")
-    zip_code = data.get("merges", {}).get("MMERGE12", "")
-    state = data.get("merges", {}).get("MMERGE21", "")
+      # Extract data inside "data[]" fields from Mailchimp
+    email = data.get("data[email]", "")
+    first_name = data.get("data[merges][FNAME]", "")
+    last_name = data.get("data[merges][LNAME]", "")
+    phone = data.get("data[merges][PHONE]", "")
+    zip_code = data.get("data[merges][MMERGE12]", "")
+    state = data.get("data[merges][MMERGE21]", "")
 
-    # Convert numeric values
+    # Engagement metrics
     def convert_to_number(value):
-        """Convert string numbers to int or float, else return as-is."""
         try:
             if "." in value:
                 return float(value)
@@ -87,15 +86,12 @@ def home():
         except (ValueError, TypeError):
             return value
 
-    # Engagement metrics
-    clicked_link = convert_to_number(data.get("merges", {}).get("MMERGE8", "0"))
-    opened_email = convert_to_number(data.get("merges", {}).get("MMERGE13", "0"))
-    bounced_email = convert_to_number(data.get("merges", {}).get("MMERGE19", "0"))
-    marked_as_spam = convert_to_number(data.get("merges", {}).get("MMERGE17", "0"))
+    clicked_link = convert_to_number(data.get("data[merges][MMERGE8]", "0"))
+    opened_email = convert_to_number(data.get("data[merges][MMERGE13]", "0"))
+    bounced_email = convert_to_number(data.get("data[merges][MMERGE19]", "0"))
+    marked_as_spam = convert_to_number(data.get("data[merges][MMERGE17]", "0"))
 
-    # Generate unique userId (e.g., use email hash or Mailchimp ID)
-    user_id = data.get("id", "")
-
+    user_id = data.get("data[id]", "")
 
      # Format the Regal.io payload
     regal_payload = {
@@ -127,6 +123,8 @@ def home():
         },
         "eventSource": "MailChimp"
     }
+    # Log payload before sending to Regal.io
+    logging.info(f"Payload Sent to Regal.io: {json.dumps(regal_payload, indent=4)}")
 
     headers = {"Authorization": REGAL_IO_API_KEY, "Content-Type": "application/json"}
     
