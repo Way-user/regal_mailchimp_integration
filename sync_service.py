@@ -74,7 +74,7 @@ def home():
     first_name = data.get("data[merges][FNAME]", "")
     last_name = data.get("data[merges][LNAME]", "")
     phone = data.get("data[merges][PHONE]", "")
-    zip_code = data.get("data[merges][MMERGE13]", "")
+    zip_code = data.get("data[merges][MMERGE12]", "")
     state = data.get("data[merges][MMERGE21]", "")
 
     # Engagement metrics
