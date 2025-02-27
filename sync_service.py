@@ -25,7 +25,7 @@ EVENT_MAPPING = {
     "upemail": "Email Address Updated",
     "campaign": "Campaign Sent"
 }
-
+'''
 @app.route("/", methods=["GET", "POST"])
 def home():
     """Health check endpoint."""
@@ -33,16 +33,34 @@ def home():
         logging.info("Received POST request at /")
         return jsonify({"message": "POST request received, but no action taken."}), 200
     return jsonify({"message": "Flask API is running!"}), 200
-
+'''
 
 # --- Mailchimp to Regal.io Sync ---
 @app.route("/mailchimp-webhook", methods=["GET","POST"])
 def mailchimp_webhook():
-    data = request.get_json()
+    """Handles incoming webhooks from Mailchimp."""
+    logging.info(f"Incoming Request: {request.method} {request.path} - Headers: {dict(request.headers)}")
+
+    if request.method == "GET":
+        return jsonify({"message": "GET request received, Mailchimp verification success."}), 200
+
+    # Handle different content types (JSON & Form)
+    if request.content_type == "application/json":
+        data = request.get_json()
+    elif request.content_type == "application/x-www-form-urlencoded":
+        data = request.form.to_dict()
+    else:
+        logging.error(f"Unsupported Media Type: {request.content_type}")
+        return jsonify({"status": "error", "message": "Unsupported Media Type"}), 415
+
+    # Log request data for debugging
+    logging.info(f"Received Mailchimp webhook: {json.dumps(data, indent=4)}")
+    
+'''    data = request.get_json()
 
     # Logging request for debugging
     logging.info(f"Received Mailchimp webhook: {data}")
-
+'''
     # Extract event type from Mailchimp data
     event_type = data.get("type", "unknown")
     event_name = EVENT_MAPPING.get(event_type, "Unknown Event")
