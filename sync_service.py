@@ -29,7 +29,7 @@ def home():
 
     if request.method == "GET":
         return jsonify({"message": "GET request received, Mailchimp verification success."}), 200
-    mailchimp_list_info = get_mailchimp_list_info()
+   
     # Handle different content types (JSON & Form)
     if request.content_type == "application/json":
         data = request.get_json()
@@ -50,6 +50,7 @@ def home():
     '''
     # Extract event type from Mailchimp data
     event_type = data.get("type", "unknown")
+    mailchimp_list_info = get_mailchimp_list_info()
 
     # Extract data inside "data[]" fields from Mailchimp
     email = data.get("data[email]", "")
@@ -58,33 +59,91 @@ def home():
     phone = data.get("data[merges][PHONE]", "")
     zip_code = data.get("data[merges][MMERGE12]", "")
     state = data.get("data[merges][MMERGE21]", "")
-
-
-    # Engagement metrics
-    def convert_to_number(value):
-        try:
-            if "." in value:
-                return float(value)
-            return int(value)
-        except (ValueError, TypeError):
-            return value
-
-    clicked_link = convert_to_number(data.get("data[merges][MMERGE9]", "0"))
+    clicked_link = int(data.get("data[merges][MMERGE9]", "0"))
     opened_email = (data.get("data[merges][MMERGE8]", "0"))
     bounced_email = (data.get("data[merges][MMERGE10]", "0"))
     marked_as_spam = (data.get("data[merges][MMERGE11]", "0"))
+    
+    #  Handle Subscription Events
+    if event_type == "subscribe":
+        event_name = "User Subscribed"
+        email_opt_in = True
 
-    user_id = data.get("data[id]", "")
+    elif event_type == "unsubscribe":
+        event_name = "User Unsubscribed"
+        email_opt_in = False
+
+    elif event_type == "profile":
+        event_name = "Profile Updated"
+        email_opt_in = True
+
+    # Handle Email Activity Events
+    elif event_type == "open":
+        event_name = "Email Opened"
+
+    elif event_type == "click":
+        event_name = "Link Clicked"
+
+    elif event_type == "bounce":
+        event_name = "Email Bounced"
+
+    #  Handle Campaign Sent Events
+    elif event_type == "campaign":
+        event_name = "Campaign Sent"
+        campaign_id = data.get("data[id]", "")
+        campaign_subject = data.get("data[subject]", "")
+        # Fetch Campaign Recipients (since Mailchimp does NOT send recipients in the webhook)
+        recipients = get_campaign_recipients(campaign_id)
+         #  Send each recipient event to Regal.io
+        for recipient in recipients:
+            recipient_email = recipient.get("email_address", "")
+            activity = recipient.get("activity", [])
+
+            clicks = sum(1 for action in activity if action["action"] == "click")
+            opens = sum(1 for action in activity if action["action"] == "open")
+            bounces = sum(1 for action in activity if action["action"] == "bounce")
+
+            regal_payload = {
+                "traits": {
+                    "email": recipient_email,
+                    "emailOptIn": {"subscribed": True},
+                    "campaign_subject": campaign_subject,
+                    "from_name": mailchimp_list_info.get("from_name", ""),
+                    "from_email": mailchimp_list_info.get("from_email", ""),
+                    "language": mailchimp_list_info.get("language", ""),
+                    "open_rate": mailchimp_list_info.get("open_rate", 0),
+                    "click_rate": mailchimp_list_info.get("click_rate", 0),
+                    "clicked_link": clicks,
+                    "opened_email": opens,
+                    "bounced_email": bounces,
+                },
+                "name": event_name,
+                "properties": {
+                    "email_subject": campaign_subject,
+                    "clicked_link": clicks,
+                    "opened_email": opens,
+                    "bounced_email": bounces,
+                    "campaign_id": campaign_id,
+                    "open_rate": mailchimp_list_info.get("open_rate", 0),
+                    "click_rate": mailchimp_list_info.get("click_rate", 0),
+                },
+                "eventSource": "MailChimp"
+            }
+            send_to_regal(regal_payload)
+
+        return jsonify({"status": "success", "message": "Campaign processed"}), 200
+
+
 
      # Format the Regal.io payload
     regal_payload = {
-        "userId": "MailChimp_"+user_id,
+        #"userId": "MailChimp_"+data.get("data[id]", ""),
         "traits": {
             "phone": phone,
             "emails": {
                 email: {
                     "emailOptIn": {
-                        "subscribed": True # Default value (change if needed)
+                        "subscribed": email_opt_in # Default value (change if needed)
                     }
                 }
             },
@@ -96,47 +155,23 @@ def home():
             "opened_email": opened_email,
             "bounced_email": bounced_email,
             "marked_as_spam": marked_as_spam,
-            "from_name": mailchimp_list_info.get("from_name", ""),
-            "from_email": mailchimp_list_info.get("from_email", ""),
-            "language": mailchimp_list_info.get("language", ""),
-            "open_rate": mailchimp_list_info.get("open_rate", 0),
-            "click_rate": mailchimp_list_info.get("click_rate", 0)
         },
-        "name": event_type,
+        "name": event_name,
         "properties": {
-            "email_subject": mailchimp_list_info.get("data[subject]", ""),
             "clicked_link": clicked_link,
             "opened_email": opened_email,
             "bounced_email": bounced_email,
-            "mailchimp_campaign_id" : mailchimp_list_info.get("data[id]", ""),
             "marked_as_spam": marked_as_spam,
-            "open_rate": mailchimp_list_info.get("open_rate", 0),
-            "click_rate": mailchimp_list_info.get("click_rate", 0)
         },
         "eventSource": "MailChimp"
     }
     # Log payload before sending to Regal.io
     logging.info(f"Payload Sent to Regal.io: {json.dumps(regal_payload, indent=4)}")
-
-    headers = {"Authorization": REGAL_IO_API_KEY, "Content-Type": "application/json"}
-    
-    try:
-        response = requests.post(
-        "https://events.regalvoice.com/events",
-        data=json.dumps(regal_payload),  # Convert dictionary to JSON
-        headers=headers
-    )
-    
-        logging.info(f"Response from Regal.io: {response.status_code} - {response.text}")
-    
-        response.raise_for_status()  # Raise an error for bad responses
-        return jsonify({"status": "success", "regal_response": response.json()}), response.status_code
-
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Error sending to Regal.io: {e}")
-        return jsonify({"status": "error", "message": str(e)}), 500
-
+     # ✅ Send Non-Campaign Events to Regal.io
+    send_to_regal(regal_payload)
     return jsonify({"status": "success", "regal_response": response.json()}), response.status_code
+    
+    
 def get_mailchimp_list_info():
     """Fetch list info (campaign defaults & stats) from Mailchimp."""
     url = f"{MAILCHIMP_API_BASE}/lists/{MAILCHIMP_LIST_ID}"
@@ -155,6 +190,35 @@ def get_mailchimp_list_info():
     except requests.exceptions.RequestException as e:
         logging.error(f"Error fetching Mailchimp list info: {e}")
         return {}
+
+def get_campaign_recipients(campaign_id):
+    """Fetch campaign recipients from Mailchimp API."""
+    
+    url = f"{MAILCHIMP_API_BASE}/reports/{campaign_id}/email-activity"
+    
+    try:
+        response = requests.get(url, headers=MAILCHIMP_AUTH_HEADER)
+        response.raise_for_status()  # Raise error if request fails
+        data = response.json()
+        return data.get("emails", [])  # Extract the list of recipients
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error fetching campaign recipients: {e}")
+        return []
+
+def send_to_regal(payload):
+    """Send formatted data to Regal.io (one contact at a time)."""
+    headers = {"Authorization": REGAL_IO_API_KEY, "Content-Type": "application/json"}
+    try:
+        response = requests.post(
+            "https://events.regalvoice.com/events",
+            json=payload,
+            headers=headers
+        )
+        response.raise_for_status()
+        logging.info(f"Successfully sent data to Regal.io: {response.text}")
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error sending data to Regal.io: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 '''
 # --- Regal.io to Mailchimp Sync (Only if `source` is "INSURANCE") ---
