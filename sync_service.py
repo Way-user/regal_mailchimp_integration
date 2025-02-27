@@ -17,14 +17,6 @@ MAILCHIMP_DC = os.environ["MAILCHIMP_DC"]
 logging.basicConfig(level=logging.INFO)
 
 
-EVENT_MAPPING = {
-    "subscribe": "User Subscribed",
-    "unsubscribe": "User Unsubscribed",
-    "profile": "Profile Updated",
-    "cleaned": "Email Bounced",
-    "upemail": "Email Address Updated",
-    "campaign": "Campaign Sent"
-}
 MAILCHIMP_API_BASE = f"https://{MAILCHIMP_DC}.api.mailchimp.com/3.0"
 MAILCHIMP_AUTH_HEADER = {"Authorization": f"Bearer {MAILCHIMP_API_KEY}"}
 
@@ -58,15 +50,9 @@ def home():
     '''
     # Extract event type from Mailchimp data
     event_type = data.get("type", "unknown")
-    event_name = EVENT_MAPPING.get(event_type, "Unknown Event")
 
-    # Extract event source
-    event_source = data.get("source", "Unknown Source")
-
-      # Extract data inside "data[]" fields from Mailchimp
+    # Extract data inside "data[]" fields from Mailchimp
     email = data.get("data[email]", "")
-    mailchimp_campaign_id = data.get("data[merges][MMERGE5]", "")
-    mailchimp_contact_subject = data.get("data[merges][MMERGE6]", "")
     first_name = data.get("data[merges][FNAME]", "")
     last_name = data.get("data[merges][LNAME]", "")
     phone = data.get("data[merges][PHONE]", "")
@@ -112,19 +98,17 @@ def home():
             "marked_as_spam": marked_as_spam,
             "from_name": mailchimp_list_info.get("from_name", ""),
             "from_email": mailchimp_list_info.get("from_email", ""),
-            "campaign_subject": mailchimp_list_info.get("subject", ""),
             "language": mailchimp_list_info.get("language", ""),
             "open_rate": mailchimp_list_info.get("open_rate", 0),
             "click_rate": mailchimp_list_info.get("click_rate", 0)
         },
-        "name": event_name,
+        "name": event_type,
         "properties": {
-            "email_subject": mailchimp_list_info.get("subject", ""),
+            "email_subject": mailchimp_list_info.get("data[subject]", ""),
             "clicked_link": clicked_link,
             "opened_email": opened_email,
             "bounced_email": bounced_email,
-            "mailchimp_campaign_id" : mailchimp_campaign_id,
-            "mailchimp_contact_subject" : mailchimp_contact_subject,
+            "mailchimp_campaign_id" : mailchimp_list_info.get("data[id]", ""),
             "marked_as_spam": marked_as_spam,
             "open_rate": mailchimp_list_info.get("open_rate", 0),
             "click_rate": mailchimp_list_info.get("click_rate", 0)
