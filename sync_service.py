@@ -138,29 +138,30 @@ def update_contacts_in_regal(campaign_id):
 
         payloads.append(regal_payload)
 
-    # Send all contacts in bulk to Regal.io
-    send_to_regal(payloads)
+    # Send each contact individually
+    send_to_regal_individually(payloads)
+
     return {"status": "success", "message": f"Contacts updated for campaign {campaign_id}"}
 
 
-def send_to_regal(payloads):
-    """Send multiple contacts to Regal.io in one request."""
+def send_to_regal_individually(payloads):
+    """Send each contact to Regal.io individually."""
     headers = {"Authorization": REGAL_IO_API_KEY, "Content-Type": "application/json"}
 
-    try:
-        logging.info(f"Sending {len(payloads)} contacts to Regal.io in bulk.")
-        response = requests.post("https://events.regalvoice.com/events", json=payloads, headers=headers)
+    for payload in payloads:
+        try:
+            logging.info(f"Sending data to Regal.io: {json.dumps(payload, indent=2)}")
+            response = requests.post("https://events.regalvoice.com/events", json=payload, headers=headers)
 
-        if response.status_code != 200:
-            logging.error(f"Failed to send data to Regal.io: {response.status_code} - {response.text}")
-            return None
+            if response.status_code != 200:
+                logging.error(f"Failed to send data to Regal.io: {response.status_code} - {response.text}")
+            else:
+                logging.info(f"Successfully sent data to Regal.io: {response.text}")
 
-        logging.info(f"Successfully sent data to Regal.io: {response.text}")
-        return response
+            time.sleep(1)  # Add a delay to prevent hitting rate limits
 
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Error sending data to Regal.io: {e}")
-        return None
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Error sending data to Regal.io: {e}")
 
 
 if __name__ == "__main__":
