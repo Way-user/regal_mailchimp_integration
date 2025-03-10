@@ -35,7 +35,33 @@ def update_contacts():
 
 
 def fetch_mailchimp_contacts():
-    """Fetch all contacts from the specified Mailchimp audience list with pagination support."""
+     """Fetch the first 5 contacts from the specified Mailchimp audience list."""
+    url = f"{MAILCHIMP_API_BASE}/lists/{MAILCHIMP_LIST_ID}/members"
+    params = {"count": 5, "offset": 0}  # Limit to first 5 contacts
+    contacts = []
+
+    try:
+        response = requests.get(url, headers=MAILCHIMP_AUTH_HEADER, params=params)
+
+        if response.status_code != 200:
+            logging.error(f"Failed to fetch contacts: {response.status_code} - {response.text}")
+            return []
+
+        data = response.json()
+        contacts = data.get("members", [])
+
+        if not contacts:
+            logging.info("No contacts found in the audience list.")
+            return []
+
+        logging.info(f"Fetched {len(contacts)} contacts from Mailchimp: {json.dumps(contacts, indent=2)}")
+
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error fetching Mailchimp contacts: {e}")
+        return []
+
+    return contacts
+   ''' """Fetch all contacts from the specified Mailchimp audience list with pagination support."""
     url = f"{MAILCHIMP_API_BASE}/lists/{MAILCHIMP_LIST_ID}/members"
     contacts = []
 
@@ -56,7 +82,8 @@ def fetch_mailchimp_contacts():
     except requests.exceptions.RequestException as e:
         logging.error(f"Error fetching Mailchimp contacts: {e}")
 
-    return contacts
+    return contacts'''
+
 
 
 
