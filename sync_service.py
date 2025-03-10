@@ -24,7 +24,6 @@ MAILCHIMP_AUTH_HEADER = {"Authorization": f"Bearer {MAILCHIMP_API_KEY}"}
 
 @app.route("/", methods=["GET"])
 def home():
-    update_contacts()
     """Root route to verify the API is running."""
     return jsonify({"message": "Flask API is running."}), 200
 
