@@ -20,11 +20,18 @@ logging.basicConfig(level=logging.INFO)
 MAILCHIMP_API_BASE = f"https://{MAILCHIMP_DC}.api.mailchimp.com/3.0"
 MAILCHIMP_AUTH_HEADER = {"Authorization": f"Bearer {MAILCHIMP_API_KEY}"}
 
+
+@app.route("/", methods=["GET"])
+def home():
+    """Root route to verify the API is running."""
+    return jsonify({"message": "Flask API is running."}), 200
+
+
 def fetch_mailchimp_contacts():
     """Fetch all contacts from the specified Mailchimp audience list with pagination support."""
     url = f"{MAILCHIMP_API_BASE}/lists/{MAILCHIMP_LIST_ID}/members"
     contacts = []
-    
+
     try:
         while url:
             response = requests.get(url, headers=MAILCHIMP_AUTH_HEADER)
@@ -155,8 +162,8 @@ def send_to_regal(payload):
         return None
 
 
-@app.route("/update-contacts", methods=["GET"])
-def update_contacts():
+@app.route("/", methods=["GET"])
+def home():
     """Manually trigger updating contacts."""
     result = update_contacts_in_regal()
     return jsonify(result)
