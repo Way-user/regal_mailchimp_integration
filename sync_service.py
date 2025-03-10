@@ -125,7 +125,6 @@ def update_contacts_in_regal(campaign_id):
                 "total_clicks": clicks,
                 "bounced_email": bounces,
                 "campaign_id": campaign_id,
-                "Campaign_title": campaign_performance.get("title",""),
                 "open_rate": campaign_performance.get("open_rate", 0),
                 "click_rate": campaign_performance.get("click_rate", 0),
                 "bounce_rate": campaign_performance.get("bounce_rate", 0),
