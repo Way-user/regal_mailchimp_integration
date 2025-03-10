@@ -4,7 +4,6 @@ import logging
 import os
 import json
 import time
-import hashlib
 
 app = Flask(__name__)
 
@@ -13,10 +12,8 @@ REGAL_IO_API_KEY = os.getenv("REGAL_IO_API_KEY")
 MAILCHIMP_API_KEY = os.getenv("MAILCHIMP_API_KEY")
 MAILCHIMP_LIST_ID = os.getenv("MAILCHIMP_LIST_ID")
 MAILCHIMP_DC = os.getenv("MAILCHIMP_DC")
-
-# Replace with your actual campaign ID
-CAMPAIGN_ID = os.getenv("MAILCHIMP_CAMPAIGN_ID")  # ✅ Campaign ID from environment variable
-RENDER_APP_URL = os.getenv("RENDER_APP_URL")  # ✅ Render App URL from environment variable
+CAMPAIGN_ID = os.getenv("MAILCHIMP_CAMPAIGN_ID")
+RENDER_APP_URL = os.getenv("RENDER_APP_URL")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -79,7 +76,7 @@ def fetch_mailchimp_campaign_contacts(campaign_id):
 
 def fetch_campaign_details(campaign_id):
     """Fetch campaign metadata like subject and click rate."""
-    url = f"{MAILCHIMP_API_BASE}/campaigns/{campaign_id}"  # ✅ Corrected API endpoint
+    url = f"{MAILCHIMP_API_BASE}/campaigns/{campaign_id}"
     try:
         response = requests.get(url, headers=MAILCHIMP_AUTH_HEADER)
         if response.status_code != 200:
@@ -88,7 +85,7 @@ def fetch_campaign_details(campaign_id):
 
         data = response.json()
         return {
-            "subject": data.get("settings", {}).get("subject_line", ""),  # ✅ Corrected subject retrieval
+            "subject": data.get("settings", {}).get("subject_line", ""),
             "open_rate": data.get("report_summary", {}).get("open_rate", 0),
             "click_rate": data.get("report_summary", {}).get("click_rate", 0),
             "bounce_rate": data.get("report_summary", {}).get("hard_bounces", 0),
@@ -116,14 +113,13 @@ def update_contacts_in_regal(campaign_id):
         clicks = contact.get("clicks", 0)
         bounces = contact.get("bounces", 0)
 
-        # Construct Regal.io payload
         regal_payload = {
             "traits": {
                 "email": email,
                 "total_opens": opens,
                 "total_clicks": clicks,
                 "bounced_email": bounces,
-                "campaign_subject": campaign_details.get("subject", ""),  # ✅ Ensure subject is included
+                "campaign_subject": campaign_details.get("subject", ""),
                 "open_rate": campaign_details.get("open_rate", 0),
                 "click_rate": campaign_details.get("click_rate", 0),
                 "bounce_rate": campaign_details.get("bounce_rate", 0),
@@ -133,7 +129,7 @@ def update_contacts_in_regal(campaign_id):
                 "total_opens": opens,
                 "total_clicks": clicks,
                 "bounced_email": bounces,
-                "campaign_subject": campaign_details.get("subject", ""),  # ✅ Ensure subject is included
+                "campaign_subject": campaign_details.get("subject", ""),
                 "open_rate": campaign_details.get("open_rate", 0),
                 "click_rate": campaign_details.get("click_rate", 0),
                 "bounce_rate": campaign_details.get("bounce_rate", 0),
@@ -169,7 +165,7 @@ def send_to_regal(payload):
 
 
 def trigger_update():
-    """Trigger update on Render startup."""
+    """Trigger update on Render startup once and then exit."""
     if CAMPAIGN_ID and RENDER_APP_URL:
         response = requests.get(f"{RENDER_APP_URL}/update-contacts?campaign_id={CAMPAIGN_ID}")
         logging.info(f"Update Triggered: {response.status_code} - {response.text}")
@@ -178,5 +174,7 @@ def trigger_update():
 
 
 if __name__ == "__main__":
-    trigger_update()  # ✅ Runs only once on Render startup
+    if os.getenv("RUN_UPDATE_ON_STARTUP") == "true":  # ✅ Only run on startup if enabled
+        trigger_update()  # ✅ Runs once on Render startup
+
     app.run(host="0.0.0.0", port=10000, debug=True)
