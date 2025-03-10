@@ -30,7 +30,7 @@ def home():
 
 @app.route("/update-contacts", methods=["GET"])
 def update_contacts():
-    """Manually trigger updating contacts based on campaign reports."""
+    """Trigger updating contacts based on campaign reports."""
     campaign_id = MAILCHIMP_CAMPAIGN_ID  # Use predefined campaign ID
 
     if not campaign_id:
@@ -49,6 +49,7 @@ def fetch_campaign_performance(campaign_id):
         data = response.json()
         
         return {
+            "title": data.get("campaign_title", ""),
             "open_rate": data.get("opens", {}).get("open_rate", 0),
             "click_rate": data.get("clicks", {}).get("click_rate", 0),
             "bounce_rate": data.get("bounces", {}).get("hard_bounces", 0),
@@ -121,17 +122,20 @@ def update_contacts_in_regal(campaign_id):
         regal_payload = {
             "traits": {
                 "email": email,
+            },
+            "name": "Campaign Engagement Update",
+            "properties": {
                 "total_opens": opens,
                 "total_clicks": clicks,
                 "bounced_email": bounces,
                 "campaign_id": campaign_id,
+                "campaign_title": campaign_performance.get("title", ""),
                 "open_rate": campaign_performance.get("open_rate", 0),
                 "click_rate": campaign_performance.get("click_rate", 0),
                 "bounce_rate": campaign_performance.get("bounce_rate", 0),
                 "total_opens": campaign_performance.get("total_opens", 0),
                 "total_clicks": campaign_performance.get("total_clicks", 0),
             },
-            "name": "Campaign Engagement Update",
             "eventSource": "MailChimp",
         }
 
