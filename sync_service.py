@@ -12,8 +12,6 @@ REGAL_IO_API_KEY = os.getenv("REGAL_IO_API_KEY")
 MAILCHIMP_API_KEY = os.getenv("MAILCHIMP_API_KEY")
 MAILCHIMP_LIST_ID = os.getenv("MAILCHIMP_LIST_ID")
 MAILCHIMP_DC = os.getenv("MAILCHIMP_DC")
-CAMPAIGN_ID = os.getenv("MAILCHIMP_CAMPAIGN_ID")
-RENDER_APP_URL = os.getenv("RENDER_APP_URL")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -164,17 +162,5 @@ def send_to_regal(payload):
         return None
 
 
-def trigger_update():
-    """Trigger update on Render startup once and then exit."""
-    if CAMPAIGN_ID and RENDER_APP_URL:
-        response = requests.get(f"{RENDER_APP_URL}/update-contacts?campaign_id={CAMPAIGN_ID}")
-        logging.info(f"Update Triggered: {response.status_code} - {response.text}")
-    else:
-        logging.error("CAMPAIGN_ID or RENDER_APP_URL is not set!")
-
-
 if __name__ == "__main__":
-    if os.getenv("RUN_UPDATE_ON_STARTUP") == "true":  # ✅ Only run on startup if enabled
-        trigger_update()  # ✅ Runs once on Render startup
-
     app.run(host="0.0.0.0", port=10000, debug=True)
