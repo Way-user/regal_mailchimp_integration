@@ -61,7 +61,7 @@ def fetch_mailchimp_contacts():
         return []
 
     return contacts
-   ''' """Fetch all contacts from the specified Mailchimp audience list with pagination support."""
+    ''' """Fetch all contacts from the specified Mailchimp audience list with pagination support."""
     url = f"{MAILCHIMP_API_BASE}/lists/{MAILCHIMP_LIST_ID}/members"
     contacts = []
 
