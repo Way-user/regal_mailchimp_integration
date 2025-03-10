@@ -50,10 +50,14 @@ def fetch_mailchimp_contacts():
 
             time.sleep(1)  # Prevent hitting Mailchimp rate limits
 
+        # LOGGING: Print contacts fetched from Mailchimp
+        logging.info(f"Fetched {len(contacts)} contacts from Mailchimp: {json.dumps(contacts[:3], indent=2)}")
+
     except requests.exceptions.RequestException as e:
         logging.error(f"Error fetching Mailchimp contacts: {e}")
 
     return contacts
+
 
 
 def get_campaign_reports():
@@ -98,11 +102,16 @@ def fetch_user_engagement(email):
             "clicks": sum(1 for a in activities if a["action"] == "click"),
             "bounces": sum(1 for a in activities if a["action"] == "bounce"),
         }
+
+        # LOGGING: Print engagement data
+        logging.info(f"Engagement for {email}: {json.dumps(engagement_data, indent=2)}")
+
         return engagement_data
 
     except requests.exceptions.RequestException as e:
-        logging.error(f"Error fetching user engagement: {e}")
+        logging.error(f"Error fetching engagement for {email}: {e}")
         return {"opens": 0, "clicks": 0, "bounces": 0}
+
 
 
 def update_contacts_in_regal():
@@ -159,14 +168,20 @@ def update_contacts_in_regal():
 def send_to_regal(payload):
     """Send formatted data to Regal.io."""
     headers = {"Authorization": REGAL_IO_API_KEY, "Content-Type": "application/json"}
+    
     try:
+        # LOGGING: Print payload before sending
+        logging.info(f"Sending data to Regal.io: {json.dumps(payload, indent=2)}")
+
         response = requests.post("https://events.regalvoice.com/events", json=payload, headers=headers)
         response.raise_for_status()
         logging.info(f"Successfully sent data to Regal.io: {response.text}")
         return response
+
     except requests.exceptions.RequestException as e:
         logging.error(f"Error sending data to Regal.io: {e}")
         return None
+
 
 
 if __name__ == "__main__":
