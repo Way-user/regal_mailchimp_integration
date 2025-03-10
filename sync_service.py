@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, request, jsonify
 import requests
 import logging
 import os
@@ -9,10 +9,14 @@ import hashlib
 app = Flask(__name__)
 
 # Load API keys from environment variables
-REGAL_IO_API_KEY = os.environ["REGAL_IO_API_KEY"]
-MAILCHIMP_API_KEY = os.environ["MAILCHIMP_API_KEY"]
-MAILCHIMP_LIST_ID = os.environ["MAILCHIMP_LIST_ID"]
-MAILCHIMP_DC = os.environ["MAILCHIMP_DC"]
+REGAL_IO_API_KEY = os.getenv("REGAL_IO_API_KEY")
+MAILCHIMP_API_KEY = os.getenv("MAILCHIMP_API_KEY")
+MAILCHIMP_LIST_ID = os.getenv("MAILCHIMP_LIST_ID")
+MAILCHIMP_DC = os.getenv("MAILCHIMP_DC")
+
+# Replace with your actual campaign ID
+CAMPAIGN_ID = os.getenv("MAILCHIMP_CAMPAIGN_ID")  # ✅ Campaign ID from environment variable
+RENDER_APP_URL = os.getenv("RENDER_APP_URL")  # ✅ Render App URL from environment variable
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -21,168 +25,118 @@ MAILCHIMP_API_BASE = f"https://{MAILCHIMP_DC}.api.mailchimp.com/3.0"
 MAILCHIMP_AUTH_HEADER = {"Authorization": f"Bearer {MAILCHIMP_API_KEY}"}
 
 
-'''@app.route("/", methods=["GET"])
+@app.route("/", methods=["GET"])
 def home():
     """Root route to verify the API is running."""
-    return jsonify({"message": "Flask API is running."}), 200'''
+    return jsonify({"message": "Flask API is running."}), 200
 
 
-@app.route("/", methods=["GET"])
+@app.route("/update-contacts", methods=["GET"])
 def update_contacts():
-    """Manually trigger updating contacts."""
-    result = update_contacts_in_regal()
+    """Trigger update for a specific campaign."""
+    campaign_id = request.args.get("campaign_id")
+
+    if not campaign_id:
+        return jsonify({"status": "error", "message": "Please provide a campaign_id"}), 400
+
+    result = update_contacts_in_regal(campaign_id)
     return jsonify(result)
 
 
-def fetch_mailchimp_contacts():
-    """Fetch the first 5 contacts from the specified Mailchimp audience list."""
-    url = f"{MAILCHIMP_API_BASE}/lists/{MAILCHIMP_LIST_ID}/members"
-    params = {"count": 5, "offset": 0}  # Limit to first 5 contacts
+def fetch_mailchimp_campaign_contacts(campaign_id):
+    """Fetch contacts who received a specific Mailchimp campaign."""
+    url = f"{MAILCHIMP_API_BASE}/reports/{campaign_id}/email-activity"
     contacts = []
 
     try:
-        response = requests.get(url, headers=MAILCHIMP_AUTH_HEADER, params=params)
-
+        response = requests.get(url, headers=MAILCHIMP_AUTH_HEADER)
         if response.status_code != 200:
-            logging.error(f"Failed to fetch contacts: {response.status_code} - {response.text}")
+            logging.error(f"Failed to fetch campaign recipients: {response.status_code} - {response.text}")
             return []
 
         data = response.json()
-        contacts = data.get("members", [])
+        emails = data.get("emails", [])
 
-        if not contacts:
-            logging.info("No contacts found in the audience list.")
-            return []
+        for entry in emails:
+            email_address = entry.get("email_address", "")
+            actions = entry.get("activity", [])
 
-        logging.info(f"Fetched {len(contacts)} contacts from Mailchimp: {json.dumps(contacts, indent=2)}")
+            if email_address:
+                contacts.append({
+                    "email": email_address,
+                    "opens": sum(1 for act in actions if act["action"] == "open"),
+                    "clicks": sum(1 for act in actions if act["action"] == "click"),
+                    "bounces": sum(1 for act in actions if act["action"] == "bounce"),
+                })
+
+        logging.info(f"Fetched {len(contacts)} contacts from campaign {campaign_id}: {json.dumps(contacts[:3], indent=2)}")
 
     except requests.exceptions.RequestException as e:
-        logging.error(f"Error fetching Mailchimp contacts: {e}")
-        return []
+        logging.error(f"Error fetching campaign contacts: {e}")
 
     return contacts
-   
-    '''"""Fetch all contacts from the specified Mailchimp audience list with pagination support."""
-    url = f"{MAILCHIMP_API_BASE}/lists/{MAILCHIMP_LIST_ID}/members"
-    contacts = []
-
-    try:
-        while url:
-            response = requests.get(url, headers=MAILCHIMP_AUTH_HEADER)
-            response.raise_for_status()
-            data = response.json()
-
-            contacts.extend(data.get("members", []))
-            url = data.get("links", [{}])[-1].get("href") if data.get("total_items", 0) > len(contacts) else None
-
-            time.sleep(1)  # Prevent hitting Mailchimp rate limits
-
-        # LOGGING: Print contacts fetched from Mailchimp
-        logging.info(f"Fetched {len(contacts)} contacts from Mailchimp: {json.dumps(contacts[:3], indent=2)}")
-
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Error fetching Mailchimp contacts: {e}")
-
-    return contacts'''
 
 
-
-
-def get_campaign_reports():
-    """Fetches all campaign reports and aggregates engagement metrics."""
-    url = f"{MAILCHIMP_API_BASE}/reports"
-    campaign_reports = {}
-
+def fetch_campaign_details(campaign_id):
+    """Fetch campaign metadata like subject and click rate."""
+    url = f"{MAILCHIMP_API_BASE}/campaigns/{campaign_id}"  # ✅ Corrected API endpoint
     try:
         response = requests.get(url, headers=MAILCHIMP_AUTH_HEADER)
-        response.raise_for_status()
-        campaigns = response.json().get("reports", [])
+        if response.status_code != 200:
+            logging.error(f"Failed to fetch campaign details: {response.status_code} - {response.text}")
+            return {}
 
-        for campaign in campaigns:
-            campaign_id = campaign.get("id", "")
-            campaign_reports[campaign_id] = {
-                "subject": campaign.get("subject_line", ""),
-                "open_rate": campaign.get("opens", {}).get("open_rate", 0),
-                "click_rate": campaign.get("clicks", {}).get("click_rate", 0),
-                "bounce_rate": campaign.get("bounces", {}).get("hard_bounces", 0),
-                "total_opens": campaign.get("opens", {}).get("opens_total", 0),
-                "total_clicks": campaign.get("clicks", {}).get("clicks_total", 0),
-            }
-
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Error fetching campaign reports: {e}")
-
-    return campaign_reports
-
-
-def fetch_user_engagement(email):
-    """Fetch engagement data for a specific user based on their email hash."""
-    email_hash = hashlib.md5(email.lower().encode()).hexdigest()
-    url = f"{MAILCHIMP_API_BASE}/lists/{MAILCHIMP_LIST_ID}/members/{email_hash}/activity"
-    
-    try:
-        response = requests.get(url, headers=MAILCHIMP_AUTH_HEADER)
-        response.raise_for_status()
-        activities = response.json().get("activity", [])
-
-        engagement_data = {
-            "opens": sum(1 for a in activities if a["action"] == "open"),
-            "clicks": sum(1 for a in activities if a["action"] == "click"),
-            "bounces": sum(1 for a in activities if a["action"] == "bounce"),
+        data = response.json()
+        return {
+            "subject": data.get("settings", {}).get("subject_line", ""),  # ✅ Corrected subject retrieval
+            "open_rate": data.get("report_summary", {}).get("open_rate", 0),
+            "click_rate": data.get("report_summary", {}).get("click_rate", 0),
+            "bounce_rate": data.get("report_summary", {}).get("hard_bounces", 0),
         }
 
-        # LOGGING: Print engagement data
-        logging.info(f"Engagement for {email}: {json.dumps(engagement_data, indent=2)}")
-
-        return engagement_data
-
     except requests.exceptions.RequestException as e:
-        logging.error(f"Error fetching engagement for {email}: {e}")
-        return {"opens": 0, "clicks": 0, "bounces": 0}
+        logging.error(f"Error fetching campaign details: {e}")
+        return {}
 
 
+def update_contacts_in_regal(campaign_id):
+    """Fetch contacts from a specific campaign and update them in Regal.io."""
+    logging.info(f"Updating contacts for campaign: {campaign_id}")
 
-def update_contacts_in_regal():
-    """Fetch contacts from Mailchimp, gather engagement data, and update them in Regal.io."""
-    contacts = fetch_mailchimp_contacts()
-    campaign_reports = get_campaign_reports()
+    contacts = fetch_mailchimp_campaign_contacts(campaign_id)
+    campaign_details = fetch_campaign_details(campaign_id)
+
+    if not contacts:
+        logging.info("No contacts found for this campaign.")
+        return {"status": "error", "message": "No contacts found for the campaign"}
 
     for contact in contacts:
-        email = contact.get("email_address", "")
-        first_name = contact.get("merge_fields", {}).get("FNAME", "")
-        last_name = contact.get("merge_fields", {}).get("LNAME", "")
-        phone = contact.get("merge_fields", {}).get("PHONE", "")
-        zip_code = contact.get("merge_fields", {}).get("MMERGE12", "")
-        state = contact.get("merge_fields", {}).get("MMERGE21", "")
-
-        # Fetch user-specific engagement data
-        engagement_data = fetch_user_engagement(email)
+        email = contact.get("email", "")
+        opens = contact.get("opens", 0)
+        clicks = contact.get("clicks", 0)
+        bounces = contact.get("bounces", 0)
 
         # Construct Regal.io payload
-        latest_campaign_id = list(campaign_reports.keys())[-1] if campaign_reports else None
-        latest_campaign = campaign_reports.get(latest_campaign_id, {}) if latest_campaign_id else {}
-
         regal_payload = {
             "traits": {
                 "email": email,
-                "phone": phone,
-                "firstName": first_name,
-                "lastName": last_name,
-                "zip": zip_code,
-                "state": state,
-                "total_opens": engagement_data["opens"],
-                "total_clicks": engagement_data["clicks"],
-                "bounced_email": engagement_data["bounces"],
-                "latest_campaign": latest_campaign.get("subject", ""),
-                "open_rate": latest_campaign.get("open_rate", 0),
-                "click_rate": latest_campaign.get("click_rate", 0),
-                "bounce_rate": latest_campaign.get("bounce_rate", 0),
+                "total_opens": opens,
+                "total_clicks": clicks,
+                "bounced_email": bounces,
+                "campaign_subject": campaign_details.get("subject", ""),  # ✅ Ensure subject is included
+                "open_rate": campaign_details.get("open_rate", 0),
+                "click_rate": campaign_details.get("click_rate", 0),
+                "bounce_rate": campaign_details.get("bounce_rate", 0),
             },
-            "name": "User Engagement Update",
+            "name": "Campaign Engagement Update",
             "properties": {
-                "total_opens": engagement_data["opens"],
-                "total_clicks": engagement_data["clicks"],
-                "bounced_email": engagement_data["bounces"],
+                "total_opens": opens,
+                "total_clicks": clicks,
+                "bounced_email": bounces,
+                "campaign_subject": campaign_details.get("subject", ""),  # ✅ Ensure subject is included
+                "open_rate": campaign_details.get("open_rate", 0),
+                "click_rate": campaign_details.get("click_rate", 0),
+                "bounce_rate": campaign_details.get("bounce_rate", 0),
             },
             "eventSource": "MailChimp",
         }
@@ -190,19 +144,22 @@ def update_contacts_in_regal():
         send_to_regal(regal_payload)
         time.sleep(1)  # Avoid hitting rate limits
 
-    return {"status": "success", "message": "Contacts updated in Regal.io"}
+    return {"status": "success", "message": f"Contacts updated for campaign {campaign_id}"}
 
 
 def send_to_regal(payload):
     """Send formatted data to Regal.io."""
-    headers = {"Authorization": REGAL_IO_API_KEY, "Content-Type": "application/json"}
+    headers = {"Authorization": f"Bearer {REGAL_IO_API_KEY}", "Content-Type": "application/json"}
     
     try:
-        # LOGGING: Print payload before sending
         logging.info(f"Sending data to Regal.io: {json.dumps(payload, indent=2)}")
 
         response = requests.post("https://events.regalvoice.com/events", json=payload, headers=headers)
-        response.raise_for_status()
+        
+        if response.status_code != 200:
+            logging.error(f"Failed to send data to Regal.io: {response.status_code} - {response.text}")
+            return None
+
         logging.info(f"Successfully sent data to Regal.io: {response.text}")
         return response
 
@@ -211,6 +168,15 @@ def send_to_regal(payload):
         return None
 
 
+def trigger_update():
+    """Trigger update on Render startup."""
+    if CAMPAIGN_ID and RENDER_APP_URL:
+        response = requests.get(f"{RENDER_APP_URL}/update-contacts?campaign_id={CAMPAIGN_ID}")
+        logging.info(f"Update Triggered: {response.status_code} - {response.text}")
+    else:
+        logging.error("CAMPAIGN_ID or RENDER_APP_URL is not set!")
+
 
 if __name__ == "__main__":
+    trigger_update()  # ✅ Runs only once on Render startup
     app.run(host="0.0.0.0", port=10000, debug=True)
