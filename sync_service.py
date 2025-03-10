@@ -27,6 +27,13 @@ def home():
     return jsonify({"message": "Flask API is running."}), 200
 
 
+@app.route("/update-contacts", methods=["GET"])
+def update_contacts():
+    """Manually trigger updating contacts."""
+    result = update_contacts_in_regal()
+    return jsonify(result)
+
+
 def fetch_mailchimp_contacts():
     """Fetch all contacts from the specified Mailchimp audience list with pagination support."""
     url = f"{MAILCHIMP_API_BASE}/lists/{MAILCHIMP_LIST_ID}/members"
@@ -160,13 +167,6 @@ def send_to_regal(payload):
     except requests.exceptions.RequestException as e:
         logging.error(f"Error sending data to Regal.io: {e}")
         return None
-
-
-@app.route("/", methods=["GET"])
-def home():
-    """Manually trigger updating contacts."""
-    result = update_contacts_in_regal()
-    return jsonify(result)
 
 
 if __name__ == "__main__":
