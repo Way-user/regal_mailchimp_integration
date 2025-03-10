@@ -35,7 +35,7 @@ def update_contacts():
 
 
 def fetch_mailchimp_contacts():
-     """Fetch the first 5 contacts from the specified Mailchimp audience list."""
+    """Fetch the first 5 contacts from the specified Mailchimp audience list."""
     url = f"{MAILCHIMP_API_BASE}/lists/{MAILCHIMP_LIST_ID}/members"
     params = {"count": 5, "offset": 0}  # Limit to first 5 contacts
     contacts = []
