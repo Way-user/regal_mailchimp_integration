@@ -8,7 +8,7 @@ RENDER_APP_URL = os.getenv("RENDER_APP_URL")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
-
+'''
 def trigger_update():
     """Trigger /update-contacts when Render starts."""
     if CAMPAIGN_ID and RENDER_APP_URL:
@@ -25,3 +25,4 @@ def trigger_update():
 
 # Run update once on startup
 trigger_update()
+'''
