@@ -21,13 +21,13 @@ MAILCHIMP_API_BASE = f"https://{MAILCHIMP_DC}.api.mailchimp.com/3.0"
 MAILCHIMP_AUTH_HEADER = {"Authorization": f"Bearer {MAILCHIMP_API_KEY}"}
 
 
-@app.route("/", methods=["GET"])
+'''@app.route("/", methods=["GET"])
 def home():
     """Root route to verify the API is running."""
-    return jsonify({"message": "Flask API is running."}), 200
+    return jsonify({"message": "Flask API is running."}), 200'''
 
 
-@app.route("/update-contacts", methods=["GET"])
+@app.route("/", methods=["GET"])
 def update_contacts():
     """Manually trigger updating contacts."""
     result = update_contacts_in_regal()
@@ -35,8 +35,34 @@ def update_contacts():
 
 
 def fetch_mailchimp_contacts():
+    """Fetch the first 5 contacts from the specified Mailchimp audience list."""
+    url = f"{MAILCHIMP_API_BASE}/lists/{MAILCHIMP_LIST_ID}/members"
+    params = {"count": 5, "offset": 0}  # Limit to first 5 contacts
+    contacts = []
+
+    try:
+        response = requests.get(url, headers=MAILCHIMP_AUTH_HEADER, params=params)
+
+        if response.status_code != 200:
+            logging.error(f"Failed to fetch contacts: {response.status_code} - {response.text}")
+            return []
+
+        data = response.json()
+        contacts = data.get("members", [])
+
+        if not contacts:
+            logging.info("No contacts found in the audience list.")
+            return []
+
+        logging.info(f"Fetched {len(contacts)} contacts from Mailchimp: {json.dumps(contacts, indent=2)}")
+
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error fetching Mailchimp contacts: {e}")
+        return []
+
+    return contacts
    
-    """Fetch all contacts from the specified Mailchimp audience list with pagination support."""
+    '''"""Fetch all contacts from the specified Mailchimp audience list with pagination support."""
     url = f"{MAILCHIMP_API_BASE}/lists/{MAILCHIMP_LIST_ID}/members"
     contacts = []
 
@@ -57,7 +83,7 @@ def fetch_mailchimp_contacts():
     except requests.exceptions.RequestException as e:
         logging.error(f"Error fetching Mailchimp contacts: {e}")
 
-    return contacts
+    return contacts'''
 
 
 
@@ -187,6 +213,4 @@ def send_to_regal(payload):
 
 
 if __name__ == "__main__":
-    logging.info("Starting Flask server and syncing contacts...")
-    update_contacts_in_regal()  # Call sync function automatically when the server starts
     app.run(host="0.0.0.0", port=10000, debug=True)
