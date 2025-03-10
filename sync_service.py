@@ -212,4 +212,7 @@ def send_to_regal(payload):
 
 
 if __name__ == "__main__":
+    logging.info("Starting Flask server and syncing first 5 contacts...")
+    update_contacts_in_regal()  # Call sync function automatically when the server starts
     app.run(host="0.0.0.0", port=10000, debug=True)
+
