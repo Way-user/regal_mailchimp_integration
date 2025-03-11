@@ -189,7 +189,7 @@ def update_contacts_in_regal(campaign_id):
             "traits": {
                 "email": email,
             },
-            "name": "Campaign Engagement Update",
+            "name": "Mailchimp Campaign Activity Update",
             "properties": {
                 "campaign_title": campaign_title,
                 "total_opens": open_counts.get(email, 0),
