@@ -12,7 +12,7 @@ REGAL_IO_API_KEY = os.environ["REGAL_IO_API_KEY"]
 MAILCHIMP_API_KEY = os.environ["MAILCHIMP_API_KEY"]
 MAILCHIMP_LIST_ID = "2960f1c6f4"
 MAILCHIMP_DC = os.environ["MAILCHIMP_DC"]
-MAILCHIMP_CAMPAIGN_ID = "77dc497b28"
+MAILCHIMP_CAMPAIGN_ID = "b02fd17322"
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
