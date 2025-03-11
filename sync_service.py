@@ -4,7 +4,6 @@ import logging
 import os
 import json
 import time
-from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
@@ -40,50 +39,21 @@ def update_contacts():
     return jsonify(result)
 
 
-def fetch_campaign_performance(campaign_id):
-    """Fetch campaign title and performance metrics from Mailchimp."""
-    url = f"{MAILCHIMP_API_BASE}/reports/{campaign_id}"
+def fetch_campaign_title(campaign_id):
+    """Fetch the campaign title from Mailchimp."""
+    url = f"{MAILCHIMP_API_BASE}/campaigns/{campaign_id}"
     try:
         response = requests.get(url, headers=MAILCHIMP_AUTH_HEADER)
         response.raise_for_status()
         data = response.json()
-
-        return {
-            "title": data.get("campaign_title", data.get("campaign_name", "Unknown Campaign")),
-        }
+        return data.get("settings", {}).get("title", "Unknown Campaign")
     except requests.exceptions.RequestException as e:
-        logging.error(f"Error fetching campaign performance: {e}")
-        return {}
+        logging.error(f"Error fetching campaign title: {e}")
+        return "Unknown Campaign"
 
 
-def fetch_campaign_open_details(campaign_id):
-    """Fetch open details for the campaign from Mailchimp."""
-    url = f"{MAILCHIMP_API_BASE}/reports/{campaign_id}/open-details"
-    try:
-        response = requests.get(url, headers=MAILCHIMP_AUTH_HEADER)
-        response.raise_for_status()
-        data = response.json()
-        return {entry["email_address"]: 1 for entry in data.get("members", [])}  # Map emails to count 1
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Error fetching campaign open details: {e}")
-        return {}
-
-
-def fetch_campaign_click_details(campaign_id):
-    """Fetch click details for the campaign from Mailchimp."""
-    url = f"{MAILCHIMP_API_BASE}/reports/{campaign_id}/click-details"
-    try:
-        response = requests.get(url, headers=MAILCHIMP_AUTH_HEADER)
-        response.raise_for_status()
-        data = response.json()
-        return {entry["email_address"]: 1 for entry in data.get("members", [])}  # Map emails to count 1
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Error fetching campaign click details: {e}")
-        return {}
-
-
-def fetch_email_activity(campaign_id):
-    """Fetch email activity for a campaign (bounces and recipients)."""
+def fetch_email_addresses(campaign_id):
+    """Fetch all email addresses associated with a campaign."""
     url = f"{MAILCHIMP_API_BASE}/reports/{campaign_id}/email-activity"
     contacts = []
     offset = 0
@@ -102,42 +72,115 @@ def fetch_email_activity(campaign_id):
 
             for entry in emails:
                 email_address = entry.get("email_address", "")
-                actions = entry.get("activity", [])
-
                 if email_address:
-                    contacts.append({
-                        "email": email_address,
-                        "bounces": sum(1 for act in actions if act["action"] == "bounce"),
-                    })
+                    contacts.append(email_address)
 
             offset += count  # Move to the next batch
 
-        logging.info(f"Fetched {len(contacts)} contacts from campaign {campaign_id}")
+        logging.info(f"Fetched {len(contacts)} email addresses from campaign {campaign_id}")
+
     except requests.exceptions.RequestException as e:
-        logging.error(f"Error fetching email activity: {e}")
+        logging.error(f"Error fetching email addresses: {e}")
 
     return contacts
+
+
+def fetch_open_counts(campaign_id):
+    """Fetch open counts for each email in the campaign."""
+    url = f"{MAILCHIMP_API_BASE}/reports/{campaign_id}/open-details"
+    open_counts = {}
+    offset = 0
+    count = 100  # Fetch 100 records per API call
+
+    try:
+        while True:
+            paginated_url = f"{url}?count={count}&offset={offset}"
+            response = requests.get(paginated_url, headers=MAILCHIMP_AUTH_HEADER)
+            response.raise_for_status()
+            data = response.json()
+
+            members = data.get("members", [])
+            if not members:
+                break
+
+            for member in members:
+                email_address = member.get("email_address", "")
+                open_count = member.get("opens", 0)
+
+                if email_address:
+                    open_counts[email_address] = open_count
+
+            offset += count
+
+        logging.info(f"Fetched open counts for {len(open_counts)} emails from campaign {campaign_id}")
+
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error fetching open counts: {e}")
+
+    return open_counts
+
+
+def fetch_click_counts(campaign_id):
+    """Fetch click counts for each email in the campaign."""
+    url = f"{MAILCHIMP_API_BASE}/reports/{campaign_id}/click-details"
+    click_counts = {}
+    offset = 0
+    count = 100  # Fetch 100 records per API call
+
+    try:
+        response = requests.get(url, headers=MAILCHIMP_AUTH_HEADER)
+        response.raise_for_status()
+        data = response.json()
+
+        links = data.get("urls_clicked", [])
+        for link in links:
+            link_id = link.get("id")
+            if not link_id:
+                continue  # Skip if link ID is missing
+
+            link_url = f"{url}/{link_id}/members"
+            offset = 0
+
+            while True:
+                paginated_url = f"{link_url}?count={count}&offset={offset}"
+                response = requests.get(paginated_url, headers=MAILCHIMP_AUTH_HEADER)
+                response.raise_for_status()
+                click_data = response.json()
+
+                members = click_data.get("members", [])
+                if not members:
+                    break
+
+                for member in members:
+                    email_address = member.get("email_address", "")
+                    if email_address:
+                        click_counts[email_address] = click_counts.get(email_address, 0) + 1  # Count each click
+
+                offset += count
+
+        logging.info(f"Fetched click counts for {len(click_counts)} emails from campaign {campaign_id}")
+
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Error fetching click counts: {e}")
+
+    return click_counts
 
 
 def update_contacts_in_regal(campaign_id):
     """Update contacts in Regal.io based on Mailchimp campaign reports."""
     logging.info(f"Updating contacts for campaign: {campaign_id}")
 
-    campaign_performance = fetch_campaign_performance(campaign_id)
-    opens = fetch_campaign_open_details(campaign_id)
-    clicks = fetch_campaign_click_details(campaign_id)
-    contacts = fetch_email_activity(campaign_id)
+    campaign_title = fetch_campaign_title(campaign_id)
+    email_addresses = fetch_email_addresses(campaign_id)
+    open_counts = fetch_open_counts(campaign_id)
+    click_counts = fetch_click_counts(campaign_id)
 
-    if not contacts:
+    if not email_addresses:
         logging.info("No contacts found for this campaign.")
         return {"status": "error", "message": "No contacts found for the campaign"}
 
-    campaign_title = campaign_performance.get("title", "Unknown Campaign")
-
     payloads = []
-    for contact in contacts:
-        email = contact.get("email", "")
-
+    for email in email_addresses:
         regal_payload = {
             "traits": {
                 "email": email,
@@ -145,9 +188,8 @@ def update_contacts_in_regal(campaign_id):
             "name": "Campaign Engagement Update",
             "properties": {
                 "campaign_title": campaign_title,
-                "total_opens": opens.get(email, 0),
-                "total_clicks": clicks.get(email, 0),
-                "bounced_email": contact.get("bounces", 0),
+                "total_opens": open_counts.get(email, 0),
+                "total_clicks": click_counts.get(email, 0),
                 "campaign_id": campaign_id,
             },
             "eventSource": "MailChimp",
