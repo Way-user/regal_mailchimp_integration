@@ -86,7 +86,7 @@ def fetch_email_addresses(campaign_id):
 
 
 def fetch_open_counts(campaign_id):
-    """Fetch open counts for each email in the campaign."""
+    """Fetch the total number of opens per email from the campaign."""
     url = f"{MAILCHIMP_API_BASE}/reports/{campaign_id}/open-details"
     open_counts = {}
     offset = 0
@@ -105,7 +105,10 @@ def fetch_open_counts(campaign_id):
 
             for member in members:
                 email_address = member.get("email_address", "")
-                open_count = member.get("opens", 0)
+                open_events = member.get("opens", [])  # List of open events
+                
+                # Convert open events to just a count
+                open_count = len(open_events)  
 
                 if email_address:
                     open_counts[email_address] = open_count
@@ -117,7 +120,8 @@ def fetch_open_counts(campaign_id):
     except requests.exceptions.RequestException as e:
         logging.error(f"Error fetching open counts: {e}")
 
-    return open_counts
+    return open_counts  # Returns { "email1@example.com": 2, "email2@example.com": 0, ... }
+
 
 
 def fetch_click_counts(campaign_id):
