@@ -64,7 +64,7 @@ def fetch_campaigns_for_list():
 
 def fetch_open_counts(campaign_id):
     """Fetch the number of opens per email in the last 24 hours."""
-    last_24_hours = (datetime.utcnow() - timedelta(days=1)).isoformat()
+    last_24_hours = (datetime.utcnow() - timedelta(days=14)).isoformat()
     url = f"{MAILCHIMP_API_BASE}/reports/{campaign_id}/open-details?since={last_24_hours}&count=100"
     open_counts = {}
 
@@ -91,7 +91,7 @@ def fetch_open_counts(campaign_id):
 
 def fetch_click_counts(campaign_id):
     """Fetch the number of clicks per email in the last 24 hours."""
-    last_24_hours = (datetime.utcnow() - timedelta(days=1)).isoformat()
+    last_24_hours = (datetime.utcnow() - timedelta(days=14)).isoformat()
     url = f"{MAILCHIMP_API_BASE}/reports/{campaign_id}/click-details?since={last_24_hours}&count=100"
     click_counts = {}
 
