@@ -9,10 +9,10 @@ from datetime import datetime, timedelta
 app = Flask(__name__)
 
 # Load API keys securely from environment variables
-REGAL_IO_API_KEY = "mg0Fk9ZtRI_tu6Vvntg1Ekrt3HU9dI-_GTNmzyaOYcNjgcAtJxeCGQ"#os.environ["REGAL_IO_API_KEY"]
-MAILCHIMP_API_KEY = "c2560ec52e254104f08b39a4515a12cf-us1"#os.environ["MAILCHIMP_API_KEY"]
-MAILCHIMP_LIST_ID = "51b4b25ac8"
-MAILCHIMP_DC = "us1"#os.environ["MAILCHIMP_DC"]
+REGAL_IO_API_KEY = os.environ["REGAL_IO_API_KEY"]
+MAILCHIMP_API_KEY = os.environ["MAILCHIMP_API_KEY"]
+MAILCHIMP_LIST_ID = "2960f1c6f4"
+MAILCHIMP_DC = os.environ["MAILCHIMP_DC"]
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -64,7 +64,7 @@ def fetch_campaigns_for_list():
 
 def fetch_open_counts(campaign_id):
     """Fetch the number of opens per email in the last 24 hours."""
-    last_24_hours = (datetime.utcnow() - timedelta(days=14)).isoformat()
+    last_24_hours = (datetime.utcnow() - timedelta(days=2)).isoformat()
     url = f"{MAILCHIMP_API_BASE}/reports/{campaign_id}/open-details?since={last_24_hours}&count=100"
     open_counts = {}
 
@@ -91,7 +91,7 @@ def fetch_open_counts(campaign_id):
 
 def fetch_click_counts(campaign_id):
     """Fetch the number of clicks per email in the last 24 hours."""
-    last_24_hours = (datetime.utcnow() - timedelta(days=14)).isoformat()
+    last_24_hours = (datetime.utcnow() - timedelta(days=2)).isoformat()
     url = f"{MAILCHIMP_API_BASE}/reports/{campaign_id}/click-details?since={last_24_hours}&count=100"
     click_counts = {}
 
